@@ -186,3 +186,29 @@ function validateConfiguration() {
   logWithTimestamp('Configuration validation passed', 'INFO');
   return true;
 }
+
+/**
+ * Generate Gmail web link for a specific email
+ * This creates a direct link to the email in Gmail web interface
+ */
+function generateGmailLink(messageId) {
+  if (!messageId) {
+    return null;
+  }
+  
+  // Gmail web interface URL format
+  return 'https://mail.google.com/mail/u/0/#inbox/' + messageId;
+}
+
+/**
+ * Get email permalink that works in browser
+ */
+function getEmailPermalink(message) {
+  try {
+    const messageId = message.getId();
+    return generateGmailLink(messageId);
+  } catch (error) {
+    console.error('Error generating email permalink:', error);
+    return null;
+  }
+}

@@ -144,11 +144,13 @@ function fetchNewsletters() {
     newsletters.push({
       id: latestMessage.getId(),
       thread: thread,
+      message: latestMessage, // Keep reference to message object
       subject: latestMessage.getSubject(),
       from: latestMessage.getFrom(),
       date: latestMessage.getDate(),
       body: extractTextFromEmail(latestMessage),
-      snippet: latestMessage.getPlainBody().substring(0, 500)
+      snippet: latestMessage.getPlainBody().substring(0, 500),
+      gmailLink: getEmailPermalink(latestMessage) // Add Gmail web link
     });
   });
   
@@ -228,6 +230,8 @@ function summarizeNewsletters(newsletters) {
     try {
       const summary = callGeminiAPI(prompt);
       const parsed = JSON.parse(summary);
+      // Add Gmail link to the parsed summary
+      parsed.gmailLink = newsletter.gmailLink;
       summaries.push(parsed);
     } catch (error) {
       console.error('Error summarizing newsletter:', error);
@@ -240,7 +244,8 @@ function summarizeNewsletters(newsletters) {
         details: 'Unable to generate full summary due to processing error.',
         actionItems: [],
         quotable: null,
-        category: 'other'
+        category: 'other',
+        gmailLink: newsletter.gmailLink
       });
     }
     
@@ -383,9 +388,17 @@ function sendDigestEmail(summaries) {
           
           <!-- Card Header -->
           <div style="background: linear-gradient(to right, ${style.bg}, #ffffff); padding: 20px; border-bottom: 1px solid #e5e7eb;">
-            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px; font-weight: 600; line-height: 1.4;">
-              ${item.subject}
-            </h3>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <h3 style="margin: 0; color: #1f2937; font-size: 18px; font-weight: 600; line-height: 1.4; flex: 1; padding-right: 15px;">
+                ${item.subject}
+              </h3>
+              ${item.gmailLink ? `
+              <a href="${item.gmailLink}" target="_blank" style="background: ${style.color}; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; white-space: nowrap; transition: opacity 0.2s;" 
+                 onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                📧 Open Email
+              </a>
+              ` : ''}
+            </div>
             <div style="color: #6b7280; font-size: 13px;">
               <span style="color: ${style.color}; font-weight: 500;">${item.source}</span>
             </div>
@@ -497,16 +510,31 @@ function sendDigestEmail(summaries) {
 }
 
 /**
- * Mark processed emails with label
+ * Mark processed emails with label and as read
  */
 function markEmailsAsProcessed(newsletters) {
   const label = getOrCreateLabel(CONFIG.labelName);
   
   newsletters.forEach(newsletter => {
-    newsletter.thread.addLabel(label);
+    try {
+      // Add the processed label
+      newsletter.thread.addLabel(label);
+      
+      // Mark the specific message as read
+      if (newsletter.message) {
+        newsletter.message.markRead();
+      } else {
+        // Fallback: mark entire thread as read
+        newsletter.thread.markRead();
+      }
+      
+      console.log(`Processed: ${newsletter.subject}`);
+    } catch (error) {
+      console.error(`Error marking email as processed: ${newsletter.subject}`, error);
+    }
   });
   
-  console.log(`Marked ${newsletters.length} emails as processed`);
+  console.log(`Marked ${newsletters.length} emails as processed and read`);
 }
 
 /**
@@ -567,7 +595,8 @@ function testWithSampleData() {
         "Try Pulumi for type-safe infrastructure management"
       ],
       quotable: "TypeScript isn't just JavaScript with types—it's a paradigm shift in how we think about large-scale JavaScript applications",
-      category: "tech"
+      category: "tech",
+      gmailLink: "https://mail.google.com/mail/u/0/#inbox/sample123"
     },
     {
       source: "GitHub - Mattermost",
@@ -586,7 +615,8 @@ function testWithSampleData() {
         "Test playbook features in staging environment"
       ],
       quotable: null,
-      category: "tech"
+      category: "tech",
+      gmailLink: "https://mail.google.com/mail/u/0/#inbox/sample456"
     }
   ];
   
