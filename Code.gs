@@ -552,15 +552,11 @@ function getOrCreateLabel(labelName) {
 }
 
 /**
- * Set up daily trigger (run this once)
+ * Set up daily trigger (run this once) - Single run per day
  */
 function setupDailyTrigger() {
   // Delete existing triggers
-  ScriptApp.getProjectTriggers().forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'processNewsletters') {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
+  clearAllTriggers();
   
   // Create new daily trigger at 8 AM
   ScriptApp.newTrigger('processNewsletters')
@@ -570,6 +566,122 @@ function setupDailyTrigger() {
     .create();
   
   console.log('Daily trigger set up for 8 AM');
+}
+
+/**
+ * Set up multiple triggers per day (run this once)
+ * Options: 2, 3, 4, or 6 times per day
+ */
+function setupMultipleDailyTriggers(timesPerDay) {
+  if (!timesPerDay) timesPerDay = 3; // Default to 3 times per day
+  
+  // Delete existing triggers
+  clearAllTriggers();
+  
+  let schedules = [];
+  
+  switch(timesPerDay) {
+    case 2:
+      schedules = [8, 18]; // 8 AM, 6 PM
+      break;
+    case 3:
+      schedules = [8, 14, 20]; // 8 AM, 2 PM, 8 PM
+      break;
+    case 4:
+      schedules = [8, 12, 16, 20]; // 8 AM, 12 PM, 4 PM, 8 PM
+      break;
+    case 6:
+      schedules = [8, 10, 12, 14, 16, 18]; // Every 2 hours from 8 AM to 6 PM
+      break;
+    default:
+      schedules = [8, 14, 20]; // Default to 3 times
+  }
+  
+  schedules.forEach(hour => {
+    ScriptApp.newTrigger('processNewsletters')
+      .timeBased()
+      .everyDays(1)
+      .atHour(hour)
+      .create();
+  });
+  
+  console.log(`Set up ${schedules.length} daily triggers at: ${schedules.join(', ')} hours`);
+}
+
+/**
+ * Set up hourly trigger (run this once) - Every hour during business hours
+ */
+function setupHourlyTrigger() {
+  // Delete existing triggers
+  clearAllTriggers();
+  
+  // Create triggers for every hour from 8 AM to 8 PM
+  for (let hour = 8; hour <= 20; hour++) {
+    ScriptApp.newTrigger('processNewsletters')
+      .timeBased()
+      .everyDays(1)
+      .atHour(hour)
+      .create();
+  }
+  
+  console.log('Hourly triggers set up from 8 AM to 8 PM (13 times per day)');
+}
+
+/**
+ * Set up custom trigger schedule (run this once)
+ * @param {Array} hours - Array of hours (0-23) when to run
+ */
+function setupCustomTriggers(hours) {
+  if (!hours || !Array.isArray(hours)) {
+    hours = [8, 12, 16, 20]; // Default schedule
+  }
+  
+  // Delete existing triggers
+  clearAllTriggers();
+  
+  hours.forEach(hour => {
+    if (hour >= 0 && hour <= 23) {
+      ScriptApp.newTrigger('processNewsletters')
+        .timeBased()
+        .everyDays(1)
+        .atHour(hour)
+        .create();
+    }
+  });
+  
+  console.log(`Custom triggers set up for hours: ${hours.join(', ')}`);
+}
+
+/**
+ * Helper function to clear all existing newsletter triggers
+ */
+function clearAllTriggers() {
+  ScriptApp.getProjectTriggers().forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'processNewsletters') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  console.log('Cleared all existing triggers');
+}
+
+/**
+ * View all current triggers for this script
+ */
+function viewCurrentTriggers() {
+  const triggers = ScriptApp.getProjectTriggers();
+  console.log(`Found ${triggers.length} triggers:`);
+  
+  triggers.forEach((trigger, index) => {
+    const handlerFunction = trigger.getHandlerFunction();
+    const triggerSource = trigger.getTriggerSource();
+    
+    if (triggerSource === ScriptApp.TriggerSource.CLOCK) {
+      const eventType = trigger.getEventType();
+      console.log(`${index + 1}. Function: ${handlerFunction}, Type: Time-based, Event: ${eventType}`);
+    } else {
+      console.log(`${index + 1}. Function: ${handlerFunction}, Source: ${triggerSource}`);
+    }
+  });
 }
 
 /**
