@@ -212,3 +212,41 @@ function getEmailPermalink(message) {
     return null;
   }
 }
+
+/**
+ * Clean JSON response from API by removing markdown code blocks
+ * Handles cases where AI returns ```json...``` wrapped responses
+ */
+function cleanJsonResponse(response) {
+  if (!response || typeof response !== 'string') {
+    return response;
+  }
+  
+  // Remove markdown code blocks (```json, ```, etc.)
+  let cleaned = response
+    .replace(/^```json\s*/i, '')  // Remove opening ```json
+    .replace(/^```\s*/i, '')      // Remove opening ```
+    .replace(/\s*```$/i, '')      // Remove closing ```
+    .trim();
+  
+  // Additional cleanup for common AI response patterns
+  cleaned = cleaned
+    .replace(/^Here's the JSON response:\s*/i, '')
+    .replace(/^The JSON response is:\s*/i, '')
+    .replace(/^JSON:\s*/i, '')
+    .trim();
+  
+  // Validate that we have something that looks like JSON
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
+    return cleaned;
+  }
+  
+  // If still not clean, try to extract JSON from the response
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
+  // Return original if no patterns match
+  return response;
+}

@@ -212,7 +212,9 @@ function summarizeNewsletters(newsletters) {
       5. "quotable": One memorable quote or key statistic if present (or null)
       6. "category": tech/business/marketing/productivity/news/personal/other
       
-      Format as JSON:
+      IMPORTANT: Return ONLY valid JSON without any markdown formatting, explanations, or code blocks.
+      
+      Expected JSON format:
       {
         "source": "Newsletter name/sender",
         "subject": "Original subject",
@@ -229,12 +231,20 @@ function summarizeNewsletters(newsletters) {
     
     try {
       const summary = callGeminiAPI(prompt);
-      const parsed = JSON.parse(summary);
+      // Clean the response to remove markdown code blocks if present
+      const cleanedSummary = cleanJsonResponse(summary);
+      
+      // Log the cleaned response for debugging
+      console.log(`Cleaned AI response for "${newsletter.subject}":`, cleanedSummary.substring(0, 200) + '...');
+      
+      const parsed = JSON.parse(cleanedSummary);
       // Add Gmail link to the parsed summary
       parsed.gmailLink = newsletter.gmailLink;
       summaries.push(parsed);
     } catch (error) {
-      console.error('Error summarizing newsletter:', error);
+      console.error(`Error summarizing newsletter "${newsletter.subject}":`, error);
+      console.error('Raw AI response:', summary?.substring(0, 500) + '...');
+      console.error('Cleaned response:', cleanedSummary?.substring(0, 500) + '...');
       // More detailed fallback
       summaries.push({
         source: newsletter.from,
