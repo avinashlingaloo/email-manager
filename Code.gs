@@ -88,11 +88,11 @@ function processNewsletters() {
     const newsletters = fetchNewsletters();
     
     if (newsletters.length === 0) {
-      console.log('No new newsletters found');
+      console.log('No new unread newsletters found');
       return;
     }
     
-    console.log(`Found ${newsletters.length} newsletters to process`);
+    console.log(`Found ${newsletters.length} unread newsletters to process`);
     
     // Summarize newsletters
     const summaries = summarizeNewsletters(newsletters);
@@ -117,7 +117,8 @@ function processNewsletters() {
 }
 
 /**
- * Fetch newsletters from Gmail
+ * Fetch unread newsletters from Gmail
+ * Only processes emails that are unread and not already labeled as processed
  */
 function fetchNewsletters() {
   const newsletters = [];
@@ -130,10 +131,11 @@ function fetchNewsletters() {
   dateFrom.setDate(dateFrom.getDate() - CONFIG.daysToSearch);
   const formattedDate = Utilities.formatDate(dateFrom, Session.getScriptTimeZone(), 'yyyy/MM/dd');
   
-  // Exclude already processed emails
-  const searchQuery = `(${CONFIG.searchQuery}) after:${formattedDate} -label:${CONFIG.labelName}`;
+  // Exclude already processed emails and include only unread emails
+  const searchQuery = `(${CONFIG.searchQuery}) after:${formattedDate} -label:${CONFIG.labelName} is:unread`;
   
   // Search for threads
+  console.log(`Searching for unread newsletters with query: ${searchQuery}`);
   const threads = GmailApp.search(searchQuery, 0, CONFIG.maxEmailsToProcess);
   
   threads.forEach(thread => {
