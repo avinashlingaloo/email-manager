@@ -3,24 +3,76 @@
  * Automatically fetches, summarizes, and emails newsletter digests
  */
 
-// Configuration
+// Configuration - Uses Script Properties for all settings
 const CONFIG = {
   // Email settings
-  recipientEmail: 'avinashlng1080@gmail.com', // Your email
-  senderName: 'Newsletter Digest Bot',
+  recipientEmail: getScriptProperty('RECIPIENT_EMAIL') || 'your_email@gmail.com',
+  senderName: getScriptProperty('SENDER_NAME') || 'Newsletter Digest Bot',
   
   // Search settings
-  daysToSearch: 1, // How many days back to search
-  searchQuery: 'unsubscribe OR "view in browser" OR from:substack OR from:medium -in:spam', // Customize this
-  maxEmailsToProcess: 20, // Limit to prevent timeout
+  daysToSearch: parseInt(getScriptProperty('DAYS_TO_SEARCH')) || 1,
+  searchQuery: getScriptProperty('SEARCH_QUERY') || 'unsubscribe OR "view in browser" OR from:substack OR from:medium -in:spam',
+  maxEmailsToProcess: parseInt(getScriptProperty('MAX_EMAILS_TO_PROCESS')) || 20,
   
   // Gemini API settings (get key from https://makersuite.google.com/app/apikey)
-  geminiApiKey: 'YOUR_GEMINI_API_KEY_HERE', // REQUIRED: Add your API key
-  geminiModel: 'gemini-1.5-flash', // or 'gemini-1.5-pro'
+  geminiApiKey: getScriptProperty('GEMINI_API_KEY') || '',
+  geminiModel: getScriptProperty('GEMINI_MODEL') || 'gemini-1.5-flash',
   
   // Label management
-  labelName: 'Newsletter-Processed', // Label to mark processed emails
+  labelName: getScriptProperty('LABEL_NAME') || 'Newsletter-Processed',
 };
+
+// Helper functions are now in Utils.gs for better organization
+
+/**
+ * Function to set up script properties (run this once)
+ * IMPORTANT: Update these values with your actual configuration
+ */
+function setupScriptProperties() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    
+    // Set your configuration values
+    properties.setProperty('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY_HERE'); // REQUIRED: Add your actual API key
+    properties.setProperty('RECIPIENT_EMAIL', 'your_email@gmail.com'); // REQUIRED: Add your actual email
+    properties.setProperty('SENDER_NAME', 'Newsletter Digest Bot');
+    properties.setProperty('DAYS_TO_SEARCH', '1');
+    properties.setProperty('SEARCH_QUERY', 'unsubscribe OR "view in browser" OR from:substack OR from:medium -in:spam');
+    properties.setProperty('MAX_EMAILS_TO_PROCESS', '20');
+    properties.setProperty('GEMINI_MODEL', 'gemini-1.5-flash');
+    properties.setProperty('LABEL_NAME', 'Newsletter-Processed');
+    
+    console.log('Script properties set successfully!');
+    console.log('Remember to update GEMINI_API_KEY and RECIPIENT_EMAIL with your actual values.');
+    
+  } catch (error) {
+    console.error('Error setting script properties:', error);
+  }
+}
+
+/**
+ * Function to view current script properties
+ */
+function viewScriptProperties() {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const allProps = properties.getProperties();
+    
+    console.log('Current Script Properties:');
+    Object.keys(allProps).forEach(key => {
+      if (key === 'GEMINI_API_KEY') {
+        // Mask API key for security
+        const masked = allProps[key].substring(0, 10) + '...' + allProps[key].substring(allProps[key].length - 4);
+        console.log(`${key}: ${masked}`);
+      } else {
+        console.log(`${key}: ${allProps[key]}`);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error viewing script properties:', error);
+  }
+}
 
 /**
  * Main function - Run this manually or via trigger
@@ -28,6 +80,9 @@ const CONFIG = {
 function processNewsletters() {
   try {
     console.log('Starting newsletter processing...');
+    
+    // Validate configuration before processing
+    validateConfiguration();
     
     // Get newsletters from Gmail
     const newsletters = fetchNewsletters();

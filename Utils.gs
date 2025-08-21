@@ -135,3 +135,54 @@ function getExecutionTimeRemaining() {
   // This is a rough estimate - in practice, you should keep executions under 5 minutes
   return 300; // 5 minutes in seconds
 }
+
+/**
+ * Helper function to safely get script properties with error handling
+ */
+function getScriptProperty(propertyName, defaultValue) {
+  if (defaultValue === undefined) defaultValue = null;
+  try {
+    return PropertiesService.getScriptProperties().getProperty(propertyName) || defaultValue;
+  } catch (error) {
+    console.error(`Error getting script property ${propertyName}:`, error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Helper function to safely set script properties with error handling
+ */
+function setScriptProperty(propertyName, value) {
+  try {
+    PropertiesService.getScriptProperties().setProperty(propertyName, value.toString());
+    return true;
+  } catch (error) {
+    console.error(`Error setting script property ${propertyName}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Validate that all required configuration properties are set
+ */
+function validateConfiguration() {
+  const requiredProperties = ['GEMINI_API_KEY', 'RECIPIENT_EMAIL'];
+  const missingProperties = [];
+  
+  requiredProperties.forEach(function(prop) {
+    const value = getScriptProperty(prop);
+    if (!value || value === '' || value.includes('YOUR_') || value.includes('your_email')) {
+      missingProperties.push(prop);
+    }
+  });
+  
+  if (missingProperties.length > 0) {
+    const errorMessage = 'Missing required configuration properties: ' + missingProperties.join(', ') + 
+                        '. Please set these in Project Settings > Script Properties.';
+    logWithTimestamp(errorMessage, 'ERROR');
+    throw new Error(errorMessage);
+  }
+  
+  logWithTimestamp('Configuration validation passed', 'INFO');
+  return true;
+}
